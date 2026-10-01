@@ -14,15 +14,11 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.json({ limit: '16mb' }));
 
-// Configure Multer for File Uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, 'uploads/'); },
-  filename: function (req, file, cb) { cb(null, Date.now() + path.extname(file.originalname)); }
-});
-const upload = multer({ storage: storage });
+// Configure Multer for File Uploads in Memory (for MongoDB storage)
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage, limits: { fileSize: 16 * 1024 * 1024 } });
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -114,8 +110,8 @@ app.post('/api/gallery', upload.single('image'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'Image file is required' });
     }
-    const imageUrl = `/uploads/${req.file.filename}`;
-    const newItem = new GalleryItem({ title, category, imageUrl });
+    const imageBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    const newItem = new GalleryItem({ title, category, imageBase64 });
     await newItem.save();
     res.status(201).json(newItem);
   } catch (err) {
@@ -137,7 +133,7 @@ app.put('/api/gallery/:id', upload.single('image'), async (req, res) => {
     const { title, category } = req.body;
     let updateData = { title, category };
     if (req.file) {
-      updateData.imageUrl = `/uploads/${req.file.filename}`;
+      updateData.imageBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
     const updatedItem = await GalleryItem.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json(updatedItem);
