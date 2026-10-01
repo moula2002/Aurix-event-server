@@ -94,6 +94,15 @@ app.post('/api/enquiries', async (req, res) => {
   }
 });
 
+app.delete('/api/enquiries/:id', async (req, res) => {
+  try {
+    await Enquiry.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Enquiry deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete enquiry' });
+  }
+});
+
 // Gallery API Routes
 app.get('/api/gallery', async (req, res) => {
   try {
